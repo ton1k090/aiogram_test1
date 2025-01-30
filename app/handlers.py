@@ -2,8 +2,19 @@ from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message, CallbackQuery
 import app.keyboards as kb
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.context import FSMContext # для управления состояниями
 
 router = Router() # Выполняет роль диспетчера
+
+
+class Reg(StatesGroup):
+    '''Класс для присвоения этих состояний пользователю'''
+    name = State()
+    number = State()
+
+
+
 
 @router.message(CommandStart()) # Диспетчер ждет именно сообщение ( команду старт )
 async def cmd_start(message: Message):
@@ -36,3 +47,25 @@ async def catalog(callback: CallbackQuery): # Принимаем калбэк
     выводящая новую инлайн клавиатуру'''
     await callback.answer('') # Чтобы кнопка перестала гореть после нажатия
     await callback.message.edit_text('This is catalog', reply_markup=await kb.inline_cars()) # Отвечаем сообщением при нажатии кнопки каталог
+
+
+'''                    FSM машина состояний                 '''
+@router.message(Command('reg')) # отлавливаем команду reg
+async def reg_one(message: Message, state: FSMContext):
+    await state.set_state(Reg.name) # переходим к другому состоянию
+    await message.answer('Input you name')
+
+
+@router.message(Reg.name)
+async def reg_two(message: Message, state: FSMContext):
+    await state.update_data(name=message.text) # присваиваем имя name
+    await state.set_state(Reg.number) # переходим к другому состоянию
+    await message.answer('Input you number')
+
+
+@router.message(Reg.number)
+async def two_three(message: Message, state: FSMContext):
+    await state.update_data(number=message.text) # присваиваем номер number
+    data = await state.get_data() # получить введенные данные
+    await message.answer(f'Success!!!\nName: {data["name"]}\nNumber: {data["number"]}') # выводим сообщение
+    await state.clear() # Очищаем
